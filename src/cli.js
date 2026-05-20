@@ -324,6 +324,17 @@ Currently configured servers:
 | Analysis, logical reasoning, comparisons | \`perplexity_perplexity_reason\` |
 | Web information, latest news, documentation | Use perplexity tools FIRST |
 
+### Fresh-First Research Protocol
+
+Before any research or information lookup, ALWAYS:
+1. **Check today's date** — note the current date as the anchor point
+2. **Prioritize fresh information** — prefer sources from the last 30 days, then 90 days, then 1 year
+3. **Discard stale data** — if information is older than 1 year, flag it as potentially outdated and verify with a fresh source
+4. **Tag recency** — when presenting research results, indicate the date/timeframe of each finding (e.g., "as of May 2026", "per 2026 docs")
+5. **Re-verify** — if your training data says X but a fresh search says Y, trust the fresh source and note the discrepancy
+
+This applies to ALL research: API docs, package versions, benchmarks, best practices, library comparisons, pricing, compatibility, and any factual claims.
+
 ### Rules
 
 1. **MCP-first for external knowledge**: When the user asks about anything that requires current/recent information, web search, research, or facts beyond your training data, use MCP Perplexity tools FIRST — before using \`bash\`, \`read\`, or other built-in tools.
@@ -331,13 +342,16 @@ Currently configured servers:
 3. **Combine sources**: Use MCP tools for external/current info, and built-in tools (\`read\`, \`bash\`, etc.) for local files and code. Use both when appropriate.
 4. **Depth selection**: For quick questions use \`perplexity_search\` (depth: "quick"). For complex research use \`perplexity_research\` (depth: "standard" or "comprehensive").
 5. **Always cite**: When using MCP results, mention that the information comes from Perplexity research.
+6. **Date-aware**: Always check today's date before research. Prefer fresh sources. Flag outdated information.
 
 ### Anti-Patterns to Avoid
 
 - ❌ Doing web research using only \`bash curl\` when MCP Perplexity is available
 - ❌ Answering with outdated knowledge when MCP tools could fetch current info
 - ❌ Forgetting to check MCP server status before assuming tools are available
-- ❌ Ignoring MCP tools entirely and only using built-in tools for research tasks`;
+- ❌ Ignoring MCP tools entirely and only using built-in tools for research tasks
+- ❌ Presenting training data as current without verifying freshness
+- ❌ Citing sources older than 1 year without a freshness warning`;
 
   if (perplexityBinary) {
     if (existsSync(AGENTS_MD)) {
