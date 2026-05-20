@@ -248,29 +248,33 @@ async function main() {
   mkdirSync(PI_AGENT_DIR, { recursive: true });
 
   if (perplexityBinary) {
-    const mcpConfig = {
-      mcpServers: {
-        perplexity: {
-          command: perplexityBinary,
-          args: [],
-          env: {
-            PERPLEXITY_API_URL,
-            PERPLEXITY_MODEL_PREFIX,
-            PERPLEXITY_MODEL,
-            PERPLEXITY_API_KEY,
-          },
-          lifecycle: MCP_LIFECYCLE,
+    const mcpServers = {
+      perplexity: {
+        command: perplexityBinary,
+        args: [],
+        env: {
+          PERPLEXITY_API_URL,
+          PERPLEXITY_MODEL_PREFIX,
+          PERPLEXITY_MODEL,
+          PERPLEXITY_API_KEY,
         },
-        tavily: {
-          command: "npx",
-          args: ["-y", "tavily-mcp@latest"],
-          env: {
-            ...(TAVILY_API_KEY ? { TAVILY_API_KEY } : {}),
-          },
-          lifecycle: "eager",
-        },
+        lifecycle: MCP_LIFECYCLE,
       },
     };
+
+    if (TAVILY_API_KEY) {
+      mcpServers.tavily = {
+        command: "npx",
+        args: ["-y", "tavily-mcp@latest"],
+        env: { TAVILY_API_KEY },
+        lifecycle: "eager",
+      };
+      ok("Tavily MCP added to config");
+    } else {
+      skip("Tavily MCP (no TAVILY_API_KEY — set env var to enable)");
+    }
+
+    const mcpConfig = { mcpServers };
 
     writeFileSync(MCP_CONFIG, JSON.stringify(mcpConfig, null, 2) + "\n");
     ok(`MCP config written → ${MCP_CONFIG}`);
@@ -305,6 +309,33 @@ async function main() {
   // ── Step 7: Write AGENTS.md ────────────────────────────────
   info("Configuring AGENTS.md...");
 
+  const hasTavily = !!TAVILY_API_KEY;
+
+  const tavilyServerLine = hasTavily
+    ? "\n- **tavily** — Web extract, map & crawl (3 tools: extract, map, crawl) — search tool available but Perplexity preferred"
+    : "";
+
+  const tavilyToolRows = hasTavily
+    ? `
+| Extract data from a web page | \`tavily_tavily_extract\` |
+| Map/structure a website | \`tavily_tavily_map\` |
+| Crawl a website systematically | \`tavily_tavily_crawl\` |`
+    : "";
+
+  const tavilyRouting = hasTavily
+    ? `
+### Tavily vs Perplexity Routing
+
+- **Search** → ALWAYS use **Perplexity** (perplexity_search, perplexity_research). Do NOT use tavily_search.
+- **Extract** → Use **Tavily** \`tavily_extract\` (Perplexity cannot extract structured data from pages)
+- **Map** → Use **Tavily** \`tavily_map\` (Perplexity cannot map website structure)
+- **Crawl** → Use **Tavily** \`tavily_crawl\` (Perplexity cannot crawl websites)`
+    : "";
+
+  const tavilyAntiPatterns = hasTavily
+    ? "\n- ❌ Using Tavily search when Perplexity is available (Perplexity is the primary search tool)\n- ❌ Using \`bash curl\` for web scraping when Tavily extract/map/crawl is available"
+    : "";
+
   const MCP_SECTION = `
 
 # Pi Agent — MCP Tools Awareness
@@ -321,8 +352,7 @@ mcp({ search: "query" })             → Search MCP tools by name/description
 \`\`\`
 
 Currently configured servers:
-- **perplexity** — Web search & deep research (4 tools: search, research, ask, reason)
-- **tavily** — Web extract, map & crawl (3 tools: extract, map, crawl) — search tool available but Perplexity preferred
+- **perplexity** — Web search & deep research (4 tools: search, research, ask, reason)${tavilyServerLine}
 
 ### When to Use MCP Tools
 
@@ -332,10 +362,7 @@ Currently configured servers:
 | Quick facts, current events, lookups | \`perplexity_perplexity_search\` |
 | How-to questions, tutorials | \`perplexity_perplexity_ask\` |
 | Analysis, logical reasoning, comparisons | \`perplexity_perplexity_reason\` |
-| Web information, latest news, documentation | Use perplexity tools FIRST |
-| Extract data from a web page | \`tavily_tavily_extract\` |
-| Map/structure a website | \`tavily_tavily_map\` |
-| Crawl a website systematically | \`tavily_tavily_crawl\` |
+| Web information, latest news, documentation | Use perplexity tools FIRST |${tavilyToolRows}
 
 ### Fresh-First Research Protocol
 
@@ -356,14 +383,7 @@ This applies to ALL research: API docs, package versions, benchmarks, best pract
 4. **Depth selection**: For quick questions use \`perplexity_search\` (depth: "quick"). For complex research use \`perplexity_research\` (depth: "standard" or "comprehensive").
 5. **Always cite**: When using MCP results, mention that the information comes from Perplexity research.
 6. **Date-aware**: Always check today's date before research. Prefer fresh sources. Flag outdated information.
-
-### Tavily vs Perplexity Routing
-
-- **Search** → ALWAYS use **Perplexity** (perplexity_search, perplexity_research). Do NOT use tavily_search.
-- **Extract** → Use **Tavily** \`tavily_extract\` (Perplexity cannot extract structured data from pages)
-- **Map** → Use **Tavily** \`tavily_map\` (Perplexity cannot map website structure)
-- **Crawl** → Use **Tavily** \`tavily_crawl\` (Perplexity cannot crawl websites)
-
+${tavilyRouting}
 ### Anti-Patterns to Avoid
 
 - ❌ Doing web research using only \`bash curl\` when MCP Perplexity is available
@@ -371,9 +391,7 @@ This applies to ALL research: API docs, package versions, benchmarks, best pract
 - ❌ Forgetting to check MCP server status before assuming tools are available
 - ❌ Ignoring MCP tools entirely and only using built-in tools for research tasks
 - ❌ Presenting training data as current without verifying freshness
-- ❌ Citing sources older than 1 year without a freshness warning
-- ❌ Using Tavily search when Perplexity is available (Perplexity is the primary search tool)
-- ❌ Using \`bash curl\` for web scraping when Tavily extract/map/crawl is available`;
+- ❌ Citing sources older than 1 year without a freshness warning${tavilyAntiPatterns}`;
 
   if (perplexityBinary) {
     if (existsSync(AGENTS_MD)) {
