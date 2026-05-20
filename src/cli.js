@@ -133,29 +133,27 @@ async function main() {
 
   console.log("");
 
-  // ── Step 3: Check GitHub SSH access ────────────────────────
-  info(`Checking GitHub SSH access for ${GITHUB_USER}...`);
+  // ── Step 3: Check access to private MCP repo ─────────────
+  info("Checking access to Perplexity MCP repo...");
 
-  let githubAuthenticated = false;
+  let hasRepoAccess = false;
 
-  if (commandExists("ssh")) {
-    const sshResult = run("ssh", {
-      args: ["-T", "git@github.com"],
+  if (commandExists("git")) {
+    // Try to access the private repo directly
+    // git ls-remote succeeds only if the user has read access
+    const lsResult = run("git", {
+      args: ["ls-remote", REPO_URL, "HEAD"],
       silent: true,
     });
-    // SSH -T returns exit code 1 on success (it prints a welcome message)
-    // Output contains "Hi <username>!"
-    const sshOutput = sshResult.stderr || sshResult.stdout;
 
-    if (sshOutput.toLowerCase().includes(GITHUB_USER.toLowerCase())) {
-      ok(`Authenticated as ${GITHUB_USER}`);
-      githubAuthenticated = true;
+    if (lsResult.success) {
+      ok(`Has access to ${GITHUB_USER}/${GITHUB_REPO}`);
+      hasRepoAccess = true;
     } else {
-      skip(`Not authenticated as ${GITHUB_USER} — skipping Perplexity MCP`);
-      console.log(`       ${COLORS.dim}SSH output: ${sshOutput}${COLORS.reset}`);
+      skip(`No access to ${GITHUB_USER}/${GITHUB_REPO} — skipping Perplexity MCP`);
     }
   } else {
-    skip("ssh not found — skipping Perplexity MCP");
+    skip("git not found — skipping Perplexity MCP");
   }
 
   console.log("");
@@ -163,7 +161,7 @@ async function main() {
   // ── Step 4: Clone & build Perplexity MCP ───────────────────
   let perplexityBinary = "";
 
-  if (githubAuthenticated) {
+  if (hasRepoAccess) {
     info("Setting up Perplexity MCP...");
 
     // Clone or update repo
@@ -347,7 +345,7 @@ Currently configured servers:
     console.log("    • mcp.json              ✓");
     console.log("    • AGENTS.md (MCP)       ✓");
   } else {
-    console.log("    • perplexity MCP server ✗ (no GitHub SSH access)");
+    console.log("    • perplexity MCP server ✗ (no repo access)");
   }
 
   console.log("");
@@ -362,7 +360,7 @@ Currently configured servers:
 
   if (!perplexityBinary) {
     console.log(`  💡 To enable Perplexity MCP:`);
-    console.log(`     Add your SSH key to GitHub account ${GITHUB_USER}, then re-run this script.`);
+    console.log(`     Ask ${GITHUB_USER} for access to ${GITHUB_REPO}, then re-run this script.`);
     console.log("");
   }
 }
