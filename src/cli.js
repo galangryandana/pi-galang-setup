@@ -91,6 +91,7 @@ const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || "gpt-5-4-thinking";
 const PERPLEXITY_MODEL_PREFIX = process.env.PERPLEXITY_MODEL_PREFIX || "galangdota2";
 const MCP_LIFECYCLE = process.env.MCP_LIFECYCLE || "lazy";
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
+const CONTEXT7_API_KEY = process.env.CONTEXT7_API_KEY || "";
 const SKILLS_DIR = join(PI_AGENT_DIR, "skills");
 const CAVEMAN_SKILL_URL = "https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/SKILL.md";
 const CAVEMAN_SKILL_DIR = join(SKILLS_DIR, "caveman");
@@ -280,6 +281,27 @@ async function main() {
       ok("Tavily MCP added to config (API key placeholder — fill in manually)");
     }
 
+    // Context7 — always install (free, no API key required, but optional for higher rate limits)
+    const context7Args = ["-y", "@upstash/context7-mcp"];
+    if (CONTEXT7_API_KEY) {
+      context7Args.push("--api-key", CONTEXT7_API_KEY);
+      mcpServers.context7 = {
+        command: "npx",
+        args: context7Args,
+        env: {},
+        lifecycle: "lazy",
+      };
+      ok("Context7 MCP added to config (API key provided)");
+    } else {
+      mcpServers.context7 = {
+        command: "npx",
+        args: context7Args,
+        env: {},
+        lifecycle: "lazy",
+      };
+      ok("Context7 MCP added to config (no API key — free tier)");
+    }
+
     const mcpConfig = { mcpServers };
 
     writeFileSync(MCP_CONFIG, JSON.stringify(mcpConfig, null, 2) + "\n");
@@ -316,9 +338,14 @@ async function main() {
   info("Configuring AGENTS.md...");
 
   const hasTavily = true; // Tavily always installed — everyone can get a free API key
+  const hasContext7 = true; // Context7 always installed — free without API key
 
   const tavilyServerLine = hasTavily
     ? "\n- **tavily** — Web extract, map & crawl (3 tools: extract, map, crawl) — search tool available but Perplexity preferred"
+    : "";
+
+  const context7ServerLine = hasContext7
+    ? "\n- **context7** — Library documentation lookup (2 tools: resolve-library-id, get-library-docs)"
     : "";
 
   const tavilyToolRows = hasTavily
@@ -326,6 +353,12 @@ async function main() {
 | Extract data from a web page | \`tavily_tavily_extract\` |
 | Map/structure a website | \`tavily_tavily_map\` |
 | Crawl a website systematically | \`tavily_tavily_crawl\` |`
+    : "";
+
+  const context7ToolRows = hasContext7
+    ? `
+| Library/API documentation, code examples | \`context7_resolve-library-id\` → \`context7_get-library-docs\` |
+| Version-specific docs for a package | \`context7_get-library-docs\` |`
     : "";
 
   const tavilyRouting = hasTavily
@@ -338,8 +371,23 @@ async function main() {
 - **Crawl** → Use **Tavily** \`tavily_crawl\` (Perplexity cannot crawl websites)`
     : "";
 
+  const context7Routing = hasContext7
+    ? `
+### Context7 Usage
+
+Use Context7 when the user needs **library/API documentation** or **code examples** for a specific package:
+1. \`resolve-library-id\` — resolve library name (e.g., "react") → Context7 ID (e.g., \`/facebook/react\`)
+2. \`get-library-docs\` — fetch docs by ID + topic (e.g., "hooks", "routing")
+
+Context7 is NOT for general web search — use Perplexity for that.`
+    : "";
+
   const tavilyAntiPatterns = hasTavily
     ? "\n- ❌ Using Tavily search when Perplexity is available (Perplexity is the primary search tool)\n- ❌ Using \`bash curl\` for web scraping when Tavily extract/map/crawl is available"
+    : "";
+
+  const context7AntiPatterns = hasContext7
+    ? "\n- ❌ Using Perplexity for library docs when Context7 has version-specific docs available"
     : "";
 
   const MCP_SECTION = `
@@ -358,7 +406,7 @@ mcp({ search: "query" })             → Search MCP tools by name/description
 \`\`\`
 
 Currently configured servers:
-- **perplexity** — Web search & deep research (4 tools: search, research, ask, reason)${tavilyServerLine}
+- **perplexity** — Web search & deep research (4 tools: search, research, ask, reason)${tavilyServerLine}${context7ServerLine}
 
 ### When to Use MCP Tools
 
@@ -368,7 +416,7 @@ Currently configured servers:
 | Quick facts, current events, lookups | \`perplexity_perplexity_search\` |
 | How-to questions, tutorials | \`perplexity_perplexity_ask\` |
 | Analysis, logical reasoning, comparisons | \`perplexity_perplexity_reason\` |
-| Web information, latest news, documentation | Use perplexity tools FIRST |${tavilyToolRows}
+| Web information, latest news, documentation | Use perplexity tools FIRST |${tavilyToolRows}${context7ToolRows}
 
 ### Fresh-First Research Protocol
 
@@ -389,7 +437,7 @@ This applies to ALL research: API docs, package versions, benchmarks, best pract
 4. **Depth selection**: For quick questions use \`perplexity_search\` (depth: "quick"). For complex research use \`perplexity_research\` (depth: "standard" or "comprehensive").
 5. **Always cite**: When using MCP results, mention that the information comes from Perplexity research.
 6. **Date-aware**: Always check today's date before research. Prefer fresh sources. Flag outdated information.
-${tavilyRouting}
+${tavilyRouting}${context7Routing}
 ### Anti-Patterns to Avoid
 
 - ❌ Doing web research using only \`bash curl\` when MCP Perplexity is available
@@ -397,7 +445,7 @@ ${tavilyRouting}
 - ❌ Forgetting to check MCP server status before assuming tools are available
 - ❌ Ignoring MCP tools entirely and only using built-in tools for research tasks
 - ❌ Presenting training data as current without verifying freshness
-- ❌ Citing sources older than 1 year without a freshness warning${tavilyAntiPatterns}`;
+- ❌ Citing sources older than 1 year without a freshness warning${tavilyAntiPatterns}${context7AntiPatterns}`;
 
   if (perplexityBinary) {
     if (existsSync(AGENTS_MD)) {
@@ -441,6 +489,7 @@ ${tavilyRouting}
   console.log("    • pi-mcp-adapter        ✓");
   console.log("    • context-mode          ✓  (saves ~98% context window)");
   console.log("    • caveman skill         ✓  (token-saving mode)");
+  console.log("    • context7 MCP          ✓  (library docs)");
 
   if (perplexityBinary) {
     console.log("    • perplexity MCP server ✓");
