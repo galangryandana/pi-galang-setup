@@ -8,11 +8,12 @@
  *
  * What it does:
  *   1. Checks prerequisites (bun, pi, git)
- *   2. Installs pi-mcp-adapter
- *   3. Checks GitHub SSH access for private MCP servers
- *   4. If authenticated → clones, builds & configures Perplexity MCP
- *   5. Writes mcp.json and AGENTS.md
- *   6. Prints summary
+ *   2. Installs pi-mcp-adapter + context-mode
+ *   3. Installs caveman skill (token-saving mode)
+ *   4. Checks GitHub SSH access for private MCP servers
+ *   5. If authenticated → clones, builds & configures Perplexity MCP
+ *   6. Writes mcp.json and AGENTS.md
+ *   7. Prints summary
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -89,6 +90,9 @@ const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || "ppx-deep-research"
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || "gpt-5-4-thinking";
 const PERPLEXITY_MODEL_PREFIX = process.env.PERPLEXITY_MODEL_PREFIX || "galangdota2";
 const MCP_LIFECYCLE = process.env.MCP_LIFECYCLE || "lazy";
+const SKILLS_DIR = join(PI_AGENT_DIR, "skills");
+const CAVEMAN_SKILL_URL = "https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/SKILL.md";
+const CAVEMAN_SKILL_DIR = join(SKILLS_DIR, "caveman");
 
 // ── Main ─────────────────────────────────────────────────────
 
@@ -117,7 +121,7 @@ async function main() {
 
   console.log("");
 
-  // ── Step 2: Install pi-mcp-adapter ────────────────────────
+  // ── Step 2: Install packages (pi-mcp-adapter + context-mode) ──
   info("Installing pi-mcp-adapter...");
 
   if (commandExists("pi")) {
@@ -131,9 +135,45 @@ async function main() {
     warn("pi not found — skipping pi-mcp-adapter install");
   }
 
+  info("Installing context-mode...");
+
+  if (commandExists("pi")) {
+    const result = run("pi", { args: ["install", "npm:context-mode"] });
+    if (result.success) {
+      ok("context-mode installed (saves ~98% context window)");
+    } else {
+      warn("context-mode install failed — may already be installed");
+    }
+  } else {
+    warn("pi not found — skipping context-mode install");
+  }
+
   console.log("");
 
-  // ── Step 3: Check access to private MCP repo ─────────────
+  // ── Step 3: Install caveman skill ─────────────────────────
+  info("Installing caveman skill...");
+
+  mkdirSync(CAVEMAN_SKILL_DIR, { recursive: true });
+
+  const cavemanTarget = join(CAVEMAN_SKILL_DIR, "SKILL.md");
+
+  if (existsSync(cavemanTarget)) {
+    skip("caveman skill already installed");
+  } else {
+    const curlResult = run("curl", {
+      args: ["-sL", CAVEMAN_SKILL_URL, "-o", cavemanTarget],
+      silent: true,
+    });
+    if (curlResult.success && existsSync(cavemanTarget)) {
+      ok("caveman skill installed (token-saving mode)");
+    } else {
+      warn("failed to download caveman skill — skipping");
+    }
+  }
+
+  console.log("");
+
+  // ── Step 4: Check access to private MCP repo ─────────────
   info("Checking access to Perplexity MCP repo...");
 
   let hasRepoAccess = false;
@@ -158,7 +198,7 @@ async function main() {
 
   console.log("");
 
-  // ── Step 4: Clone & build Perplexity MCP ───────────────────
+  // ── Step 5: Clone & build Perplexity MCP ───────────────────
   let perplexityBinary = "";
 
   if (hasRepoAccess) {
@@ -201,7 +241,7 @@ async function main() {
     console.log("");
   }
 
-  // ── Step 5: Write MCP config ───────────────────────────────
+  // ── Step 6: Write MCP config ───────────────────────────────
   info("Configuring MCP...");
 
   mkdirSync(PI_AGENT_DIR, { recursive: true });
@@ -253,7 +293,7 @@ async function main() {
 
   console.log("");
 
-  // ── Step 6: Write AGENTS.md ────────────────────────────────
+  // ── Step 7: Write AGENTS.md ────────────────────────────────
   info("Configuring AGENTS.md...");
 
   const MCP_SECTION = `
@@ -339,6 +379,8 @@ Currently configured servers:
   console.log("");
   console.log("  Configured:");
   console.log("    • pi-mcp-adapter        ✓");
+  console.log("    • context-mode          ✓  (saves ~98% context window)");
+  console.log("    • caveman skill         ✓  (token-saving mode)");
 
   if (perplexityBinary) {
     console.log("    • perplexity MCP server ✓");
