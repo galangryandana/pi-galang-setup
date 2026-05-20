@@ -17,27 +17,85 @@ npx @galangryandana/pi-galang-setup
        │
        ├─ 1. Check prerequisites (bun, pi, git)
        ├─ 2. Install pi-mcp-adapter
-       ├─ 3. Test GitHub SSH access:
+       ├─ 3. Check access to private Perplexity MCP repo:
        │      │
-       │      ├─ ✅ Authenticated as galangryandana
+       │      ├─ ✅ Has access (repo owner or invited collaborator)
        │      │   ├─ git clone perplexity-pro-mcp (private repo)
        │      │   ├─ bun build binary
        │      │   ├─ Write ~/.pi/agent/mcp.json
        │      │   └─ Write ~/.pi/agent/AGENTS.md (MCP section)
        │      │
-       │      └─ ❌ No access / different account
+       │      └─ ❌ No access
        │          └─ Skip Perplexity, other setup still runs
        │
        └─ 4. Print summary
 ```
 
+## Prerequisites
+
+### Required (must have)
+
+| Tool | How to Install | Why |
+|------|----------------|-----|
+| **Node.js** ≥ 18 | [nodejs.org](https://nodejs.org) or `nvm install 18` | Required for `npx` to run the installer |
+| **Git** | Package manager (`apt`, `brew`, etc.) | Required for cloning repos |
+| **Bun** | `curl -fsSL https://bun.sh/install \| bash` | Required for building MCP server binary |
+| **Pi agent** | `bun add -g @earendil-works/pi-coding-agent` | This is what we're setting up! |
+
+### Optional (for Perplexity MCP)
+
+> ❌ **No `gh` CLI needed!** The installer uses plain `git` + SSH.
+
+| Requirement | How to Setup | Why |
+|-------------|-------------|-----|
+| **SSH key** | See [Setup SSH Key](#setup-ssh-key) below | Used by `git` to access private GitHub repo |
+| **Repo access** | Ask repo owner for invite | The installer checks if you can access `galangryandana/perplexity-pro-mcp` |
+
+If you don't have these, the installer will still run — it just skips the Perplexity MCP setup.
+
+### Setup SSH Key
+
+If you don't have an SSH key yet:
+
+```bash
+# 1. Generate a new SSH key
+ssh-keygen -t ed25519 -C "your-email@example.com"
+# Press Enter 3x to accept defaults
+
+# 2. Add to ssh-agent
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+
+# 3. Copy your public key
+cat ~/.ssh/id_ed25519.pub
+```
+
+Then add it to your GitHub account:
+- Go to **https://github.com/settings/keys**
+- Click **New SSH key**
+- Paste your public key
+- Click **Add SSH key**
+
+Verify it works:
+```bash
+ssh -T git@github.com
+# Should show: Hi <username>! You've successfully authenticated...
+```
+
+### Setup Repo Access
+
+If you're **not** the repo owner:
+1. Ask `galangryandana` to invite your GitHub account as a collaborator to `perplexity-pro-mcp`
+2. Accept the invitation via email or GitHub notification
+3. Run `npx @galangryandana/pi-galang-setup` — it will auto-detect your access
+
 ## Perplexity MCP
 
-The Perplexity MCP server source lives in a **private GitHub repo**. The installer auto-detects SSH access:
+The Perplexity MCP server source lives in a **private GitHub repo**. The installer checks repo access via `git ls-remote`:
 
-- **Has access** → clones, builds & configures everything
+- **Has access** (owner or collaborator) → clones, builds & configures everything
 - **No access** → skips silently, other setup still runs
-- **Re-run anytime** → will pick up new SSH keys automatically
+- **Re-run anytime** → will pick up new access automatically
 
 ## MCP Tools Available
 
@@ -68,15 +126,23 @@ npx @galangryandana/pi-galang-setup
 | `PI_AGENT_DIR` | `~/.pi/agent` | Pi agent config directory |
 | `PROJECTS_DIR` | `~/projects` | Where to clone repos |
 
-## Prerequisites
+## Quick Start on a Fresh Machine
 
-| Tool | Install |
-|------|---------|
-| [Node.js](https://nodejs.org) ≥ 18 | Required for `npx` |
-| [Bun](https://bun.sh) | `curl -fsSL https://bun.sh/install \| bash` |
-| [Pi](https://pi.dev) | `bun add -g @earendil-works/pi-coding-agent` |
-| [Git](https://git-scm.com) | Package manager |
-| SSH key (for Perplexity) | `ssh-keygen` + add to GitHub |
+```bash
+# 1. Install prerequisites
+curl -fsSL https://bun.sh/install | bash    # Bun
+bun add -g @earendil-works/pi-coding-agent   # Pi agent
+
+# 2. Setup SSH key (for Perplexity MCP)
+ssh-keygen -t ed25519 && ssh-add ~/.ssh/id_ed25519
+# Add the public key to https://github.com/settings/keys
+
+# 3. Run the installer
+npx @galangryandana/pi-galang-setup
+
+# 4. Start Pi
+pi
+```
 
 ## Uninstall
 
