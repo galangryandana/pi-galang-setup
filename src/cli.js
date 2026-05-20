@@ -267,7 +267,7 @@ async function main() {
           env: {
             ...(TAVILY_API_KEY ? { TAVILY_API_KEY } : {}),
           },
-          lifecycle: "lazy",
+          lifecycle: "eager",
         },
       },
     };
