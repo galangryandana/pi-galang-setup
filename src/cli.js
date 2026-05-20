@@ -269,9 +269,15 @@ async function main() {
         env: { TAVILY_API_KEY },
         lifecycle: "eager",
       };
-      ok("Tavily MCP added to config");
+      ok("Tavily MCP added to config (API key provided)");
     } else {
-      skip("Tavily MCP (no TAVILY_API_KEY — set env var to enable)");
+      mcpServers.tavily = {
+        command: "npx",
+        args: ["-y", "tavily-mcp@latest"],
+        env: { TAVILY_API_KEY: "YOUR_API_KEY_HERE" },
+        lifecycle: "eager",
+      };
+      ok("Tavily MCP added to config (API key placeholder — fill in manually)");
     }
 
     const mcpConfig = { mcpServers };
@@ -309,7 +315,7 @@ async function main() {
   // ── Step 7: Write AGENTS.md ────────────────────────────────
   info("Configuring AGENTS.md...");
 
-  const hasTavily = !!TAVILY_API_KEY;
+  const hasTavily = true; // Tavily always installed — everyone can get a free API key
 
   const tavilyServerLine = hasTavily
     ? "\n- **tavily** — Web extract, map & crawl (3 tools: extract, map, crawl) — search tool available but Perplexity preferred"
@@ -443,11 +449,7 @@ ${tavilyRouting}
     console.log("    • AGENTS.md (MCP)       ✓");
   } else {
     console.log("    • perplexity MCP server ✗ (no repo access)");
-    if (TAVILY_API_KEY) {
-      console.log("    • tavily MCP server     ✓  (extract, map, crawl)");
-    } else {
-      console.log("    • tavily MCP server     ✗ (no TAVILY_API_KEY)");
-    }
+    console.log("    • tavily MCP server     ✓  (extract, map, crawl)");
   }
 
   console.log("");
@@ -460,16 +462,17 @@ ${tavilyRouting}
 
   console.log("");
 
-  if (!perplexityBinary) {
-    console.log(`  💡 To enable Perplexity MCP:`);
-    console.log(`     Ask ${GITHUB_USER} for access to ${GITHUB_REPO}, then re-run this script.`);
+  if (!TAVILY_API_KEY) {
+    console.log("  ⚠️  Tavily MCP needs an API key:");
+    console.log("     1. Get free API key at https://app.tavily.com/home");
+    console.log(`     2. Edit ${MCP_CONFIG}`);
+    console.log('     3. Replace YOUR_API_KEY_HERE with your key');
     console.log("");
   }
 
-  if (!TAVILY_API_KEY) {
-    console.log("  💡 To enable Tavily MCP (extract, map, crawl):", "");
-    console.log("     1. Get free API key at https://app.tavily.com/home");
-    console.log("     2. Re-run: TAVILY_API_KEY=your-key npx @galangryandana/pi-galang-setup");
+  if (!perplexityBinary) {
+    console.log("  💡 To enable Perplexity MCP:");
+    console.log(`     Ask ${GITHUB_USER} for access to ${GITHUB_REPO}, then re-run this script.`);
     console.log("");
   }
 }
