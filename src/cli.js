@@ -289,7 +289,7 @@ async function main() {
         command: "npx",
         args: context7Args,
         env: {},
-        lifecycle: "lazy",
+        lifecycle: "eager",
       };
       ok("Context7 MCP added to config (API key provided)");
     } else {
@@ -297,7 +297,7 @@ async function main() {
         command: "npx",
         args: context7Args,
         env: {},
-        lifecycle: "lazy",
+        lifecycle: "eager",
       };
       ok("Context7 MCP added to config (no API key — free tier)");
     }
