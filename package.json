@@ -1,0 +1,25 @@
+{
+  "name": "@galangryandana/pi-galang-setup",
+  "version": "1.0.0",
+  "description": "One-shot Pi agent setup with Perplexity MCP and custom configuration",
+  "type": "module",
+  "bin": {
+    "pi-galang-setup": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "keywords": [
+    "pi",
+    "pi-agent",
+    "mcp",
+    "perplexity",
+    "setup"
+  ],
+  "author": "galangryandana",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
